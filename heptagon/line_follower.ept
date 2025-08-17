@@ -1,0 +1,261 @@
+const kp: int = 1
+const ki: int = 100
+const kd: int = 10000
+
+const left_turn_speed: int = 90
+const right_turn_speed: int = 90
+
+
+(*PID : CONTROLLER*)
+node pidController(sen0, sen1, sen2, sen3, sen4: int) returns (v_l, v_r: int)
+	var integeral, propotional, derivative, pid_value, output, error: int;
+	let
+		error = sen1 - sen3;
+		propotional = error;
+		integeral = 0 -> (pre(integeral) + error);
+		derivative = error - (0 -> pre(error));
+		pid_value = (propotional / kp) + (integeral / ki) + (derivative / kd);
+		output = if (pid_value < 0) then -10 else 10;
+		v_l = if (output = 0) then 75 else (45 - output);
+		v_r = if (output = 0) then 75 else (45 + output);
+	tel
+
+
+(*### MAIN FUNCTION ###*)
+node main(sen0, sen1, sen2, sen3, sen4, ir_left, ir_right, top_l, top_r: int; sec: bool) returns (v_l, v_r, dir: int)
+	var sen_array: int^5; last rightEmp:int = 0 ; last leftEmp:int = 0;
+	let
+	(*====MAIN AUTOMETA====*)
+		automaton
+
+			(*===White Line following state===*)
+			state White
+			do
+				sen_array = [1023 - sen0, 1023 - sen1, 1023 - sen2, 1023 - sen3, 1023 - sen4];
+				automaton
+
+					(*===Inital Push State==*)
+					state Idle
+					do
+						dir = 1;  
+						v_l = 75; v_r = 75;
+					unless (sen_array[1] < 500 or sen_array[3] < 500) then Pid
+					| (sen_array[0] < 500) then Turnleft
+					| (sen_array[4] < 500) then Turnright
+
+
+					(*===State Calling PID===*)
+					state Pid
+					do
+						dir = 2; 
+						(v_l, v_r) = pidController(sen_array[0], sen_array[1], sen_array[2], sen_array[3], sen_array[4]);
+					unless (sen_array[0] < 500) then Turnleft
+					| (sen_array[4] < 500) then Turnright
+
+
+					(*===State For Left Turn===*)
+					state Turnleft
+					do
+						dir = 3;
+						v_l = left_turn_speed; v_r = left_turn_speed;
+					unless (sen_array[1] < 500 or sen_array[3] < 500) then Pid
+					| sen_array[4] < 500 then Turnright
+
+
+					(*State For RightTurn===*)
+					state Turnright
+					do
+						dir = 4;
+						v_l = right_turn_speed; v_r = right_turn_speed;
+					unless (sen_array[1] < 500 or sen_array[3] < 500) then Pid
+					| sen_array[0] < 500 then Turnleft
+				end
+
+			unless (sen0 > 600 and sen1 > 600 and sen2 < 600 and sen3 > 600  and sen4 > 600) 
+			or (sen0 > 600 and sen1 < 600 and sen2 > 600 and sen3 > 600  and sen4 > 600)
+			or (sen0 > 600 and sen1 > 600 and sen2 > 600 and sen3 < 600  and sen4 > 600) then Black
+
+
+			(*===Black Line following State===*)
+			state Black
+			do
+				sen_array = [sen0, sen1, sen2, sen3, sen4];
+				automaton
+
+					(*===Initail State After Line switching===*)
+					state Idle
+					do
+						dir = 6;  
+						v_l = 50; 
+						v_r = 50;
+					unless (sen_array[0] > 850 and sen_array[1] > 750 and sen_array[2] > 850 and sen_array[3] > 750 and sen_array[4] > 650) then Reverse 
+					| (sen_array[1] < 500 or sen_array[3] < 500) then Pid
+					| (sen_array[0] < 500) then Turnleft
+					| (sen_array[4] < 500) then Turnright
+					| (ir_left = 1 or ir_right = 1) then ObstacleDetected
+					| (top_l = 0 and top_r = 0) then ParkingCheck
+
+					
+					(*===State Calling PID===*)
+					state Pid
+					do
+						dir = 2; 
+						(v_l, v_r) = pidController(sen_array[0], sen_array[1], sen_array[2], sen_array[3], sen_array[4]);
+					unless (sen_array[0] > 850 and sen_array[1] > 750 and sen_array[2] > 850 and sen_array[3] > 750 and sen_array[4] > 650) then Reverse 
+					| (sen_array[0] < 500) then Turnleft
+					| (sen_array[4] < 500) then Turnright
+					| (ir_left = 1 or ir_right = 1) then ObstacleDetected
+					| (top_l = 0 and top_r = 0) then ParkingCheck
+
+
+					(*===State For Left Turn===*)
+					state Turnleft
+					do
+						dir = 3; 
+						v_l = left_turn_speed; 
+						v_r = left_turn_speed;
+					unless (sen_array[0] > 850 and sen_array[1] > 750 and sen_array[2] > 850 and sen_array[3] > 750 and sen_array[4] > 650) then Reverse 
+					| (sen_array[1] < 500 or sen_array[3] < 500) then Pid
+					| sen_array[4] < 500 then Turnright
+					| (ir_left = 1 or ir_right = 1) then ObstacleDetected
+					| (top_l = 0 and top_r = 0) then ParkingCheck
+
+
+					(*===State For Right Turn===*)
+					state Turnright
+					do
+						dir = 4;
+						v_l = right_turn_speed; 
+						v_r = right_turn_speed;
+					unless (sen_array[0] > 850 and sen_array[1] > 750 and sen_array[2] > 850 and sen_array[3] > 750 and sen_array[4] > 650) then Reverse
+					| (sen_array[1] < 500 or sen_array[3] < 600) then Pid
+					| sen_array[0] < 500 then Turnleft
+					| (ir_left = 1 or ir_right = 1) then ObstacleDetected
+					| (top_l = 0 and top_r = 0) then ParkingCheck
+
+
+					(**===State for UTurn if Deadend Detected===*)
+					state Reverse
+					do
+						dir = 4;
+						v_l = 50;
+						v_r = 50;
+					unless ( sen_array[2] < 600 ) then Idle
+					| (top_l = 0 and top_r = 0) then ParkingCheck
+
+
+
+					(*-----------------------------ObstacleDetected--------------------------------*)
+					
+					(*===State Taking Right Turn if obstacle detected===*)
+					state ObstacleDetected
+					var time : int ;
+					do
+						time = 6 -> pre(time) -1;
+						v_l = 40;
+						v_r = 40;
+						dir = 6;
+					until time <=0 then RightonObs 
+
+
+					state RightonObs
+					do
+						v_l = 40;
+						v_r = 40;
+						dir = 4;
+					unless top_l = 0 then MoveAlong
+
+
+
+
+					(*===State Moving ALong the Object===*)
+					state MoveAlong
+					do
+						v_l = 40;
+						v_r = 40;
+						dir = 6;
+					unless top_l = 1 then FindObstacle
+					|sen_array[1] < 500 then Turnright
+
+					(*===state for Continously Finding Obstacle===*)
+					state FindObstacle
+					do
+						v_l = 50;
+						v_r = 25;
+						dir = 6;
+					unless top_l = 0 then MoveAlong
+					| (ir_left = 1 or ir_right = 1) then ObstacleDetected
+					| (sen_array[1] < 500 or sen_array[0]<500 or sen_array[2]<500) then Turnright
+
+
+
+					(*-------------------------------------Parking---------------------------------------*)
+
+					(*===State for Finding Space for Parking===*)
+					state ParkingCheck
+					var time : int;
+					do 
+						time = 50 -> pre(time) - 1;
+						rightEmp = if (top_r = 1 and time = 1) then  last rightEmp + 1 else if (top_r = 0 and time = 1) then 0 else last rightEmp;
+						leftEmp = if (top_l = 1 and time = 1) then last leftEmp + 1 else if (top_l = 0 and time = 1) then 0 else  last leftEmp;
+						v_l = 0;
+						v_r = 0;
+						dir = 6;
+					until (rightEmp = 2) then ParkRight
+					|(leftEmp = 2) then ParkLeft
+					|(leftEmp < 2 and rightEmp < 2 and time = 0) then BlindForward
+
+
+					(*===Move Blindly to Check Empty Space===*)
+					state BlindForward
+					var time:int;
+					do
+						time = 30 -> pre(time) - 1; 
+						dir = 2; 
+						(v_l, v_r) = pidController(sen0, sen1, sen2, sen3, sen4);
+					until time = 0 then ParkingCheck
+
+
+					(*===Right Side Parking State===*)
+					state ParkRight
+					var time: int;
+					do
+						time = 20 -> pre(time) - 1;
+						v_l = 40;
+						v_r = 40;
+						dir = 4;
+					until time = 0 then MoveStr
+
+
+					(*===Left Side Parking State===*)
+					state ParkLeft
+					var time: int;
+					do
+						time = 20 -> pre(time) - 1;
+						v_l = 40;
+						v_r = 40;
+						dir = 3;
+					until time = 0 then MoveStr
+
+
+					(*===Move Straight For Parking===*)
+					state MoveStr
+					var time: int;
+					do
+						time = 30 -> pre(time) - 1;
+						v_l = 60;
+						v_r = 60;
+						dir = 6;
+					until time = 0 then Parked
+
+
+					(*===Stops and Parked State===*)
+					state Parked
+					do 
+						v_l = 0;
+						v_r = 0;
+						dir = 6;
+
+				end
+		end
+	tel
