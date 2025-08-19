@@ -1,174 +1,59 @@
-# Self-Navigating Robot: Automated Parking & Obstacle Handling
+# Self-Navigating Robot – Automated Parking & Obstacle Handling  
 
-A robotics project that enables a robot to autonomously navigate, detect, and avoid obstacles while performing automated parking maneuvers. Designed for research, educational, and hobbyist applications, this project integrates sensor data, navigation algorithms, and real-time motor control for robust self-navigation in dynamic environments.
+## Project Overview  
 
----
+This project implements a **self-navigating robot** capable of:  
 
-## Table of Contents
+- **Autonomous line following** (white & black line modes)  
+- **Obstacle detection and avoidance** using IR & proximity sensors  
+- **Intersection navigation** with structured turns  
+- **Smart parking** into empty slots  
 
-- [Project Overview](#project-overview)
-- [Features](#features)
-- [System Architecture](#system-architecture)
-- [Hardware Requirements](#hardware-requirements)
-- [Software Requirements](#software-requirements)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Directory Structure](#directory-structure)
-- [Configuration](#configuration)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
-- [License](#license)
-- [Acknowledgements](#acknowledgements)
+The robot is programmed in the **Heptagon synchronous programming language** and demonstrates **reactive + state-based control** using:  
+
+- **PID controllers**  
+- **Sensor fusion**  
+- **Finite State Machines (FSMs)**  
 
 ---
 
-## Project Overview
+## System Components  
 
-This project implements a self-navigating robot capable of:
-- Detecting and avoiding obstacles using sensors
-- Locating and parking in designated spaces automatically
-- Making intelligent path decisions in real-time
+The robot controller is implemented in a single Heptagon file `line_follower.ept`, with **modular nodes** for each functionality.  
 
-The project focuses on modular, extensible code for ease of experimentation and adaptation to various hardware platforms.
-
----
-
-## Features
-
-- **Autonomous Navigation:** Real-time pathfinding and movement
-- **Obstacle Detection & Avoidance:** Utilizes sensors (e.g., ultrasonic, IR, LIDAR)
-- **Automated Parking:** Precision alignment and slot detection
-- **Modular Design:** Easy to swap hardware components or algorithms
-- **Extensive Logging:** Optional verbose logging for debugging and analysis
+| Component            | Description |
+|----------------------|-------------|
+| **White Line Following** | Tracks white lines using five sensors. PID ensures precise alignment. Switches to black-line mode at intersections. |
+| **Black Line Following** | Tracks black lines on light surfaces. Integrates obstacle detection. Uses PID for smooth movement. |
+| **Line Switching**   | Handles transitions between white and black line modes on alternating tracks. |
+| **PID Control**      | Adjusts motor speeds `(v_l, v_r)` with P, I, D terms. Separate tuning for white & black line modes. |
+| **Obstacle Avoidance** | Uses IR & proximity sensors to detect obstacles. Executes left/right maneuvers with forward bias. |
+| **Intersection Handling** | Executes **predefined turns** at intersections based on a counter. |
+| **Smart Parking**    | Detects empty slots and autonomously performs parking maneuvers using PID-controlled alignment. |
 
 ---
 
-## System Architecture
+## Hardware Requirements  
 
-- **Sensors:** Gather distance and environmental data
-- **Controller:** Processes sensor data, runs navigation and parking algorithms
-- **Motors:** Receive movement commands
-- **Feedback Loop:** Continuously updates robot's state and executes adjustments
-
-```
-[Sensors] --> [Controller/Algorithms] --> [Motors]
-         ^                             |
-         |-----------------------------|
-```
+- 2 × DC motors (left & right)  
+- 5 × Line sensors (`sen0–sen4`)  
+- 2 × IR sensors (front-left & front-right)  
+- 2 × Proximity/obstacle sensors (left & right)  
+- Microcontroller compatible with **Heptagon-generated C code** (e.g., Arduino)  
 
 ---
 
-## Hardware Requirements
+## Software Requirements  
 
-- Microcontroller (e.g., Arduino, Raspberry Pi, ESP32)
-- Motor Driver (L298N, etc.)
-- Motors (DC/Servo motors)
-- Ultrasonic/IR sensors (HC-SR04, etc.)
-- Optional: LIDAR, Camera
-- Chassis, wheels, power supply
+- **Heptagon Compiler (heptc)**  
+- Linux / macOS / Windows for compilation  
+- Heptagon libraries & toolchain  
 
 ---
 
-## Software Requirements
+## Setup Instructions  
 
-- Programming Language: Python / C++ / Embedded C (adapt to your hardware)
-- Libraries:
-    - For Arduino: `NewPing`, `Servo`, `AFMotor`, etc.
-    - For Raspberry Pi: `RPi.GPIO`, `pigpio`, `opencv-python` (if using camera)
-- (Optional) ROS (Robot Operating System) integration
-
----
-
-## Installation
-
-1. **Clone the Repository**
-    ```bash
-    git clone https://github.com/hirusaam/Self-Navigating-Robot-Automated-Parking-Obstacle-Handling.git
-    cd Self-Navigating-Robot-Automated-Parking-Obstacle-Handling
-    ```
-
-2. **Install Dependencies**
-    - For Arduino: Use Arduino Library Manager
-    - For Python:
-        ```bash
-        pip install -r requirements.txt
-        ```
-
-3. **Upload/Deploy Code**
-    - For Arduino: Use Arduino IDE to upload `.ino` file
-    - For Raspberry Pi: Run Python scripts directly
-
----
-
-## Usage
-
-1. **Hardware Setup:** Assemble the robot and connect all sensors and motors.
-2. **Configure Parameters:** Edit configuration files (e.g., port numbers, thresholds).
-3. **Power On:** Supply power to the robot.
-4. **Run Code:** 
-    - For Arduino: Code runs on boot.
-    - For Raspberry Pi: 
-        ```bash
-        python main.py
-        ```
-5. **Monitor Output:** Use serial monitor or log files for debugging.
-
----
-
-## Directory Structure
-
-```
-Self-Navigating-Robot-Automated-Parking-Obstacle-Handling/
-│
-├── hardware/         # Schematics, wiring diagrams
-├── src/              # Source code (algorithms, controllers)
-├── config/           # Configuration files
-├── docs/             # Documentation, diagrams, reports
-├── test/             # Unit tests and sample data
-├── requirements.txt  # Python dependencies (if applicable)
-└── README.md         # This file
-```
-
----
-
-## Configuration
-
-- Edit parameters in `config/` files (e.g., sensor thresholds, motor speeds)
-- Hardware pin assignments can be set in the main source file or configuration file
-
----
-
-## Troubleshooting
-
-- **Robot not moving:** Check motor driver wiring and power supply.
-- **Sensors not responding:** Verify sensor connections and update code with correct pins.
-- **Parking not accurate:** Adjust calibration parameters in config.
-
----
-
-## Contributing
-
-Contributions are welcome! Please fork the repo and submit a pull request. For major changes, open an issue first to discuss your ideas.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a pull request
-
----
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
----
-
-## Acknowledgements
-
-- [Open Source Robotics Community](https://www.ros.org/)
-- [Adafruit Learning System](https://learn.adafruit.com/)
-- [Arduino Project Hub](https://create.arduino.cc/projecthub)
-- All contributors and testers
-
----
+1. **Clone the repository**  
+   ```bash
+   git clone https://github.com/hirusaam/Self-Navigating-Robot-Automated-Parking-Obstacle-Handling.git
+   cd Self-Navigating-Robot-Automated-Parking-Obstacle-Handling
